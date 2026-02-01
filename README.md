@@ -10,7 +10,10 @@ Using `:Furry` with no input removes all highlighting from previous Furry search
 ## Installation
 With lazy.nvim:
 ```lua
-{ "litvinov-git/furry.nvim" },
+    {
+        "litvinov-git/furry.nvim",
+        dependencies = { "nvim-mini/mini.fuzzy" },
+    },
 ```
 To enable the aforementioned commands, put somewhere in your config (init.lua for example):
 ```lua
