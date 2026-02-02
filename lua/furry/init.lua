@@ -1,24 +1,57 @@
-local M = {}
-local opts = {
-    highlight_matches = true,
-    highlight_current = true,
-    max_score = 1800,
-}
-function M.setup(user_opts)
-    opts = vim.tbl_deep_extend("force", opts, user_opts or {})
-end
-
 -- Import mini.fuzzy
 local fz = require("mini.fuzzy")
-
--- Variables to keep last search data
-local jumplist = {}                                              -- table of of matched coordinates to jump to
-local current = 1                                                -- last index selected from the jumplist
 
 -- Highlighting namespaces
 local ns_id = vim.api.nvim_create_namespace("furry_matches")     -- namespace for highlighting matches
 local ns_id_cur = vim.api.nvim_create_namespace("furry_current") -- namespace for highlighting current
 
+-- Autocmd group
+local cmd_group = vim.api.nvim_create_augroup("furry_on_change", { clear = true })
+local cmd_group_buf = vim.api.nvim_create_augroup("furry_on_buf", { clear = true })
+
+local jumplist = {}
+local current = 1
+local last_prompt = "  "
+vim.api.nvim_create_autocmd({ "BufWipeout", "BufDelete" }, {
+    callback = function(args)
+        print("BUFFER DESTROYED:", args.buf)
+    end,
+})
+
+-- Read variables of the buffer on enter, write if none
+vim.api.nvim_create_autocmd("BufEnter", {
+    group = cmd_group_buf,
+    callback = function()
+        if vim.b.jumplist == nil then
+            vim.b.jumplist = {}
+            vim.b.current = 1
+            vim.b.last_prompt = " "
+        end
+        jumplist = vim.b.jumplist
+        current = vim.b.current
+        last_prompt = vim.b.last_prompt
+    end,
+})
+
+-- Self table to expose API
+local M = {}
+
+-- Default configuration
+local opts = {
+    highlight_matches = true,
+    highlight_current = true,
+    max_score = 1800,
+    progressive = true,
+    on_empty = "dump",
+    on_space = "repeat_last",
+    on_change = "dump",
+    on_buf_enter = "repeat_last"
+}
+
+-- Load user configuration
+function M.setup(user_opts)
+    opts = vim.tbl_deep_extend("force", opts, user_opts or {})
+end
 
 -- Helper function that returns index of an element in a table
 local function index_of(t, value)
@@ -52,6 +85,7 @@ end
 local function fuzzy_visible(query)
     jumplist = {}
     current = 1
+    last_prompt = query
 
     local items = get_visible_lines()
 
@@ -63,7 +97,17 @@ local function fuzzy_visible(query)
     local matches, indices = fz.filtersort(query, texts)
 
     for i = 1, #matches do
-        if fz.match(query, matches[i]).score <= opts.max_score then
+        if opts.max_score <= 0 or fz.match(query, matches[i]).score <= opts.max_score then
+            table.insert(jumplist, {
+                line = vim.fn.line('w0') + indices[i] - 2,
+                col = fz.match(query, matches[i]).positions[1] - 1,
+                col_last = fz.match(query, matches[i]).positions[# fz.match(query, matches[i]).positions] - 1,
+            })
+        end
+    end
+
+    if #jumplist == 0 and opts.progressive == true then
+        for i = 1, #matches do
             table.insert(jumplist, {
                 line = vim.fn.line('w0') + indices[i] - 2,
                 col = fz.match(query, matches[i]).positions[1] - 1,
@@ -73,7 +117,8 @@ local function fuzzy_visible(query)
     end
 
     if #jumplist == 0 then
-        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(":echo 'No matches'<CR>", true, false, true), "n", true)
+        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(":echo 'Furry: no matches'<CR>", true, false, true), "n",
+            true)
         return
     end
 
@@ -116,10 +161,34 @@ local function fuzzy_visible(query)
             }
         )
     end
-
-    local winid = vim.api.nvim_get_current_win()
-    vim.api.nvim_win_set_cursor(winid, { jumplist[current].line + 1, jumplist[current].col })
+    vim.b.jumplist = jumplist
+    vim.b.current = current
+    vim.b.last_prompt = last_prompt
 end
+
+-- Special actions table
+local cmds = {}
+function cmds.dump()
+    vim.api.nvim_buf_clear_namespace(0, ns_id, 0, -1)
+    vim.api.nvim_buf_clear_namespace(0, ns_id_cur, 0, -1)
+    vim.api.nvim_clear_autocmds({ group = cmd_group, buffer = 0 })
+    jumplist = {}
+    current = 1
+end
+
+function cmds.repeat_last()
+    if last_prompt == " " or last_prompt == "" then
+        return
+    end
+    fuzzy_visible(last_prompt)
+end
+
+vim.api.nvim_create_autocmd("BufEnter", {
+    group = cmd_group_buf,
+    callback = function()
+        cmds[opts.on_buf_enter]()
+    end,
+})
 
 -- Read user input, clear highlighting if no input, perform furry search
 function M.furry()
@@ -127,17 +196,38 @@ function M.furry()
         { prompt = "Furry: " },
         function(input)
             if input == nil or input == "" then
-                vim.api.nvim_buf_clear_namespace(0, ns_id, 0, -1)
-                vim.api.nvim_buf_clear_namespace(0, ns_id_cur, 0, -1)
+                cmds[opts.on_empty]()
+            elseif input == " " then
+                cmds[opts.on_space]()
+            else
+                fuzzy_visible(input)
+            end
+            if #jumplist == 0 then
                 return
             end
-            fuzzy_visible(input)
+            local winid = vim.api.nvim_get_current_win()
+            vim.api.nvim_win_set_cursor(winid,
+                { jumplist[current].line + 1, jumplist[current].col })
+            vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+                group = cmd_group,
+                buffer = 0,
+                once = false,
+                callback = function()
+                    cmds[opts.on_change]()
+                end,
+            })
         end
     )
 end
 
 -- Cycle to the next match, highlight as current
 function M.next()
+    if current == nil or #jumplist == 0 then
+        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(":echo 'Furry: no matches'<CR>", true, false, true), "n",
+            true)
+        return
+    end
+
     current = current + 1
 
     if current > #jumplist then
@@ -160,12 +250,18 @@ function M.next()
             }
         )
     end
-
+    vim.b.current = current
     vim.api.nvim_win_set_cursor(winid, { jumplist[current].line + 1, jumplist[current].col })
 end
 
 -- Cycle to the previous match, highlight as current
 function M.prev()
+    if current == nil or #jumplist == 0 then
+        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(":echo 'Furry: no matches'<CR>", true, false, true), "n",
+            true)
+        return
+    end
+
     current = current - 1
 
     if current < 1 then
@@ -188,7 +284,7 @@ function M.prev()
             }
         )
     end
-
+    vim.b.current = current
     vim.api.nvim_win_set_cursor(winid, { jumplist[current].line + 1, jumplist[current].col })
 end
 
@@ -196,7 +292,5 @@ end
 vim.api.nvim_create_user_command("Furry", M.furry, {})
 vim.api.nvim_create_user_command("FurryNext", M.next, {})
 vim.api.nvim_create_user_command("FurryPrev", M.prev, {})
-
-
 
 return M
