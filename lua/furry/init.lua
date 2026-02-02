@@ -12,11 +12,6 @@ local cmd_group_buf = vim.api.nvim_create_augroup("furry_on_buf", { clear = true
 local jumplist = {}
 local current = 1
 local last_prompt = "  "
-vim.api.nvim_create_autocmd({ "BufWipeout", "BufDelete" }, {
-    callback = function(args)
-        print("BUFFER DESTROYED:", args.buf)
-    end,
-})
 
 -- Read variables of the buffer on enter, write if none
 vim.api.nvim_create_autocmd("BufEnter", {
