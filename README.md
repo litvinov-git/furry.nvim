@@ -6,6 +6,7 @@ Sometimes literal matching is not convenient at all, as well as scanning your sc
 ## Usage
 - `:Furry` - type the string you want to match for, press `<CR>`, simple as. It is best to avoid spaces
 - `:FurryNext` / `:FurryPrev` - cycle to the next/previous match
+
 Using `:Furry` with no input or a single space as the input calls distinct configurable actions
 ## Installation and configuration
 With lazy.nvim:
