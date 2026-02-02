@@ -24,7 +24,7 @@ With lazy.nvim:
 			    -- on_empty = "dump",
 			    -- on_space = "repeat_last",
 			    -- on_change = "dump",
-			    -- on_buf_enter = "dump",
+			    -- on_buf_enter = "repeat_last",
             })
         end
 
