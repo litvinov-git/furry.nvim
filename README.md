@@ -44,7 +44,7 @@ If you want to change an option, uncomment it and change the value accordingly:
 - List of available actions:
     - `dump` - clear the jumplist (list of matches) and highlighting
     - `repeat_last` - search and highlight again with the last used prompt
-        - `repeat_last` is the behavior of the standart / search, which rescans every buffer change
+        - `repeat_last` is the behavior of the standart / search, which rescans on every buffer change
 
 To bind the keys:
 ```lua
