@@ -38,6 +38,7 @@ vim.keymap.set("n", "sd", ":FurryNext<CR>")
 ## Want to get fast like a cheetah?
 Abuse fuzzy matching. A good example:
 1. You want to jump to `"Flash Treesitter"` in:
+    ```lua
     {
         "folke/flash.nvim",
         event = "VeryLazy",
@@ -51,6 +52,7 @@ Abuse fuzzy matching. A good example:
             --             { "<c-s>", mode = { "c" },           function() require("flash").toggle() end,            desc = "Toggle Flash Search" },
         },
     },
+    ```
 2. Call Furry with your keymap, awfully pronounce your desired keyword, omitting all the vowels and keeping only a the first couple of consonants in the words, possibly using common abbreviations: `"flts"`
 3. Type it, hit `<CR>`
 4. Boom, you are there! In a single cheetah stride
