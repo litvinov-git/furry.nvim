@@ -33,7 +33,7 @@ With lazy.nvim:
 If you want to change an option, uncomment it and change the value accordingly:
 - `highlight_matches` - whether to highlight all matches with the group "Search"
 - `highlight_current` - whether to highlight the last match you jumped to with the group "IncSearch"
-- `max_score` - above which score to cut the matches (the higher, the stricter the matching)
+- `max_score` - above which score to cut the matches (the lower, the stricter the matching)
 - `progressive` - whether to search with no score limit if nothing was found before
 - `on_empty` - what action take when the input is empty
 - `on_space` - what action take when input is a single space
