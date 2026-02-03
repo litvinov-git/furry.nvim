@@ -167,8 +167,8 @@ function cmds.dump()
     vim.api.nvim_buf_clear_namespace(0, ns_id, 0, -1)
     vim.api.nvim_buf_clear_namespace(0, ns_id_cur, 0, -1)
     vim.api.nvim_clear_autocmds({ group = cmd_group, buffer = 0 })
-    jumplist = {}
-    current = 1
+    jumplist, vim.b.jumplist = {}, {}
+    current, vim.b.current = 1, 1
 end
 
 function cmds.repeat_last()
@@ -181,6 +181,9 @@ end
 vim.api.nvim_create_autocmd("BufEnter", {
     group = cmd_group_buf,
     callback = function()
+        if #jumplist == 0 then
+            return
+        end
         cmds[opts.on_buf_enter]()
     end,
 })
