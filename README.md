@@ -4,8 +4,12 @@ Yes, other name suggestions are welcome in form of GitHub issues.
 ## What is it for?
 Sometimes literal matching is not convenient at all, as well as scanning your screen for labels. I use furry.nvim for instant jump anywhere on the visible lines.
 ## Usage
-- `:Furry` - type the string you want to match for, press `<CR>`, simple as. It is best to avoid spaces
+- `:Furry` - type the string you want to match for, press `<CR>`, simple as. It is best to avoid spaces. Matches on visible lines
 - `:FurryNext` / `:FurryPrev` - cycle to the next/previous match
+- `:FurryGlobal` - matches on all lines of the buffers
+- `:FurryDown` - matches on visible lines below the current lines
+- `:FurryUp` - matches on visible lines above the current one
+
 
 Using `:Furry` with no input or a single space as the input calls distinct configurable actions
 ## Installation and configuration

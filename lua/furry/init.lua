@@ -58,8 +58,12 @@ local function index_of(t, value)
     return 1
 end
 
+
+--============================================================================================================
+
+
 -- Helper function that returns the table of tables of a a line in visible lines and its number in the buffer
-local function get_visible_lines()
+local function visible()
     local top = vim.fn.line('w0')
     local bot = vim.fn.line('w$')
 
@@ -76,13 +80,68 @@ local function get_visible_lines()
     return items
 end
 
+
+local function global()
+    local top = 1
+    local bot = vim.fn.line('$')
+
+    local lines = vim.api.nvim_buf_get_lines(0, top - 1, bot, false)
+
+    local items = {}
+    for i, text in ipairs(lines) do
+        table.insert(items, {
+            lnum = top + i - 1,
+            text = text,
+        })
+    end
+
+    return items
+end
+
+
+local function down()
+    local top = vim.fn.line('.')
+    local bot = vim.fn.line('w$')
+
+    local lines = vim.api.nvim_buf_get_lines(0, top - 1, bot, false)
+
+    local items = {}
+    for i, text in ipairs(lines) do
+        table.insert(items, {
+            lnum = top + i - 1,
+            text = text,
+        })
+    end
+
+    return items
+end
+
+
+local function up()
+    local top = vim.fn.line('w0')
+    local bot = vim.fn.line('.')
+
+    local lines = vim.api.nvim_buf_get_lines(0, top - 1, bot, false)
+
+    local items = {}
+    for i, text in ipairs(lines) do
+        table.insert(items, {
+            lnum = top + i - 1,
+            text = text,
+        })
+    end
+
+    return items
+end
+
+
 -- Perform search, jump to the best match, load and highlight results
-local function fuzzy_visible(query)
+local function fuzzy_visible(query, range)
     jumplist = {}
     current = 1
     last_prompt = query
 
-    local items = get_visible_lines()
+    local items = range
 
     local texts = {}
     for i, item in ipairs(items) do
@@ -94,7 +153,7 @@ local function fuzzy_visible(query)
     for i = 1, #matches do
         if opts.max_score <= 0 or fz.match(query, matches[i]).score <= opts.max_score then
             table.insert(jumplist, {
-                line = vim.fn.line('w0') + indices[i] - 2,
+            line = items[1].lnum + indices[i] - 2,
                 col = fz.match(query, matches[i]).positions[1] - 1,
                 col_last = fz.match(query, matches[i]).positions[# fz.match(query, matches[i]).positions] - 1,
             })
@@ -104,7 +163,7 @@ local function fuzzy_visible(query)
     if #jumplist == 0 and opts.progressive == true then
         for i = 1, #matches do
             table.insert(jumplist, {
-                line = vim.fn.line('w0') + indices[i] - 2,
+                line = items[1].lnum + indices[i] - 2,
                 col = fz.match(query, matches[i]).positions[1] - 1,
                 col_last = fz.match(query, matches[i]).positions[# fz.match(query, matches[i]).positions] - 1,
             })
@@ -175,7 +234,7 @@ function cmds.repeat_last()
     if last_prompt == " " or last_prompt == "" then
         return
     end
-    fuzzy_visible(last_prompt)
+    fuzzy_visible(last_prompt, visible())
 end
 
 vim.api.nvim_create_autocmd("BufEnter", {
@@ -189,7 +248,7 @@ vim.api.nvim_create_autocmd("BufEnter", {
 })
 
 -- Read user input, clear highlighting if no input, perform furry search
-function M.furry()
+function M.furry(range)
     vim.ui.input(
         { prompt = "Furry: " },
         function(input)
@@ -198,7 +257,7 @@ function M.furry()
             elseif input == " " then
                 cmds[opts.on_space]()
             else
-                fuzzy_visible(input)
+                fuzzy_visible(input, range)
             end
             if #jumplist == 0 then
                 return
@@ -287,8 +346,21 @@ function M.prev()
 end
 
 -- Create user commands
-vim.api.nvim_create_user_command("Furry", M.furry, {})
+vim.api.nvim_create_user_command("Furry", function()
+    M.furry(visible())
+end, {})
+vim.api.nvim_create_user_command("FurryDown", function()
+    M.furry(down())
+end, {})
+vim.api.nvim_create_user_command("FurryUp", function()
+    M.furry(up())
+end, {})
+vim.api.nvim_create_user_command("FurryGlobal", function()
+    M.furry(global())
+end, {})
+
 vim.api.nvim_create_user_command("FurryNext", M.next, {})
 vim.api.nvim_create_user_command("FurryPrev", M.prev, {})
 
 return M
+
