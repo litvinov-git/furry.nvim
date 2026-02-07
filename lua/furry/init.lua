@@ -327,8 +327,10 @@ function M.furry(range)
             -- Special actions if input is empty or a space
             if input == nil or input == "" then
                 cmds[opts.on_empty]()
+                return
             elseif input == " " then
                 cmds[opts.on_space]()
+                return
             else
                 get_matches(input, range)
             end
